@@ -1,0 +1,17 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - expense-data:/data
+    environment:
+      EXPENSE_SEED: "true"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  expense-data:
