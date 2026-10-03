@@ -1,6 +1,6 @@
 import { useState, type SyntheticEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth/authContext';
+import { useAuth } from '../auth/useAuth';
 import { ErrorAlert } from '../components/ErrorAlert';
 
 export function LoginPage() {

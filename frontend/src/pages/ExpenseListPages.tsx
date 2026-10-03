@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/api';
 import type { Status } from '../api/types';
-import { useAuth } from '../auth/authContext';
+import { useAuth } from '../auth/useAuth';
 import { ErrorAlert } from '../components/ErrorAlert';
 import { ExpenseTable } from '../components/ExpenseTable';
 import { useLoad } from '../components/useLoad';

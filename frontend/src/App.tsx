@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import type { Permission } from './api/types';
 import { AuthProvider } from './auth/AuthContext';
-import { useAuth } from './auth/authContext';
+import { useAuth } from './auth/useAuth';
 import { Layout } from './components/Layout';
 import { AuditLogPage } from './pages/admin/AuditLogPage';
 import { MastersPage } from './pages/admin/MastersPage';

@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth/authContext';
+import { useAuth } from '../auth/useAuth';
 import { roleLabel } from '../domain/labels';
 
 export function Layout() {
