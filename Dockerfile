@@ -16,7 +16,8 @@ COPY backend/ ./
 RUN go build -trimpath -ldflags="-s -w" -o /out/expense ./cmd/expense
 
 FROM alpine:3.20
-RUN addgroup -S app && adduser -S app -G app && mkdir -p /data && chown app:app /data
+# OpenShift runs as a random UID in group 0, so /data must be group-writable.
+RUN addgroup -S app && adduser -S app -G app && mkdir -p /data && chown app:0 /data && chmod 775 /data
 WORKDIR /app
 COPY --from=backend /out/expense /app/expense
 COPY --from=frontend /src/frontend/dist /app/static
