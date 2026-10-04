@@ -5,11 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -275,14 +276,36 @@ func currentUser(r *http.Request) store.User {
 }
 
 // spaHandler serves static files and falls back to index.html for client-side routes.
+// Files are read through os.DirFS, which rejects ".." and absolute paths, so a
+// request can never reach outside dir.
 func spaHandler(dir string) http.Handler {
-	fs := http.FileServer(http.Dir(dir))
+	root := os.DirFS(dir)
+	files := http.FileServerFS(root)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p := filepath.Join(dir, filepath.Clean("/"+r.URL.Path))
-		if st, err := os.Stat(p); err != nil || st.IsDir() {
-			http.ServeFile(w, r, filepath.Join(dir, "index.html"))
+		name := strings.TrimPrefix(path.Clean("/"+r.URL.Path), "/")
+		if name == "" {
+			name = "."
+		}
+		if st, err := fs.Stat(root, name); err != nil || st.IsDir() {
+			http.ServeFileFS(w, r, root, "index.html")
 			return
 		}
-		fs.ServeHTTP(w, r)
+		files.ServeHTTP(w, r)
 	})
+}
+
+// sessionCookie builds the session cookie (HttpOnly, SameSite=Strict).
+// Secure is set when -secure-cookie is enabled or the request arrived over
+// TLS; it cannot be unconditional because the local setup (`make run`,
+// e2e tests) serves plain HTTP, where browsers would drop a Secure cookie.
+func (s *Server) sessionCookie(r *http.Request, value string, maxAge int) *http.Cookie {
+	return &http.Cookie{ //nolint:gosec // G124: Secure is configurable for plain-HTTP local use; see comment above.
+		Name:     SessionCookie,
+		Value:    value,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   s.secureCookie || r.TLS != nil,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   maxAge,
+	}
 }

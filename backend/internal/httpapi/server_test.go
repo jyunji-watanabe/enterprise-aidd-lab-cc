@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -272,4 +273,47 @@ func TestCSVExportAndAttachmentOverHTTP(t *testing.T) {
 func itoa(v int64) string {
 	b, _ := json.Marshal(v)
 	return string(b)
+}
+
+func TestSPAHandlerServesFilesAndBlocksTraversal(t *testing.T) {
+	ctx := context.Background()
+	st, err := store.Open(ctx, ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	parent := t.TempDir()
+	dist := parent + "/dist"
+	if err := os.MkdirAll(dist+"/assets", 0o750); err != nil {
+		t.Fatal(err)
+	}
+	_ = os.WriteFile(dist+"/index.html", []byte("INDEX"), 0o600)
+	_ = os.WriteFile(dist+"/assets/app.js", []byte("APP"), 0o600)
+	_ = os.WriteFile(parent+"/secret.txt", []byte("SECRET"), 0o600)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	h := httpapi.New(service.New(st, logger, io.Discard), logger, httpapi.Options{StaticDir: dist}).Handler()
+	get := func(path string) string {
+		req := httptest.NewRequest("GET", "/", nil)
+		req.URL.Path = path // bypass client-side cleaning to send raw traversal paths
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec.Body.String()
+	}
+	if got := get("/assets/app.js"); got != "APP" {
+		t.Errorf("static file: %q", got)
+	}
+	// Unknown paths (client-side routes) fall back to index.html.
+	for _, p := range []string{"/", "/expenses/1", "/secret.txt"} {
+		if got := get(p); got != "INDEX" {
+			t.Errorf("%s: want index fallback, got %q", p, got)
+		}
+	}
+	// Traversal attempts never expose files outside the static directory
+	// (the mux redirects them to the cleaned in-root path).
+	for _, p := range []string{"/../secret.txt", "/assets/../../secret.txt", "/..", "/assets/../../../etc/passwd"} {
+		if got := get(p); strings.Contains(got, "SECRET") || strings.Contains(got, "root:") {
+			t.Errorf("%s: leaked file outside static dir: %q", p, got)
+		}
+	}
 }

@@ -45,7 +45,8 @@ func envOr(key, def string) string {
 
 func openService(ctx context.Context, dbPath string, logger *slog.Logger) (*service.Service, func(), error) {
 	if dbPath != ":memory:" {
-		if err := os.MkdirAll(filepath.Dir(dbPath), 0o750); err != nil {
+		// dbPath comes from the operator's own -db flag / EXPENSE_DB env, not from remote input.
+		if err := os.MkdirAll(filepath.Dir(dbPath), 0o750); err != nil { //nolint:gosec // G703: trusted operator-supplied path
 			return nil, nil, err
 		}
 	}

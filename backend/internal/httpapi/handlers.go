@@ -37,11 +37,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		s.writeServiceError(w, r, err)
 		return
 	}
-	http.SetCookie(w, &http.Cookie{
-		Name: SessionCookie, Value: token, Path: "/", HttpOnly: true,
-		Secure: s.secureCookie, SameSite: http.SameSiteStrictMode,
-		MaxAge: int(s.svc.SessionTTL.Seconds()),
-	})
+	http.SetCookie(w, s.sessionCookie(r, token, int(s.svc.SessionTTL.Seconds())))
 	writeJSON(w, http.StatusOK, user)
 }
 
@@ -50,7 +46,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request, actor doma
 	if err := s.svc.Logout(r.Context(), token, actor, meta(r)); err != nil {
 		return err
 	}
-	http.SetCookie(w, &http.Cookie{Name: SessionCookie, Value: "", Path: "/", HttpOnly: true, Secure: s.secureCookie, SameSite: http.SameSiteStrictMode, MaxAge: -1})
+	http.SetCookie(w, s.sessionCookie(r, "", -1))
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

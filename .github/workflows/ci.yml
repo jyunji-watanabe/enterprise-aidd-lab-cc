@@ -31,7 +31,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
-          version: v2.5.0
+          version: v2.14.0
           working-directory: backend
       - name: Unit & integration tests
         run: go test -race -count=1 -coverprofile=coverage.out ./... && go tool cover -func=coverage.out | tail -1
